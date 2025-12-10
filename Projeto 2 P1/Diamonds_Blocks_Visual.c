@@ -9,11 +9,16 @@
 
 RegistroPlacar gPlacar[MAX_JOGADORES];
 int gQuantidadePlacar = 0;
-char gNomeJogador[TAM_NOME] = "Jogador";
+
+char gNomeJogador[TAM_NOME] = "";
+int gTamNomeJogador = 0;
+bool gNomeConfirmado = false;
+
 
 
 
 typedef enum {
+    TELA_NOME_JOGADOR,
     TELA_MENU = 0,
     TELA_INSTRUCOES,
     TELA_GAMEPLAY,
@@ -151,6 +156,61 @@ void FimPartida(void){
     }
     
 }
+
+void AtualizarNomeJogador(void){
+    int key = GetCharPressed();
+
+    while (key > 0) {
+        if (key >= 32 && key <= 125 && gTamNomeJogador < TAM_NOME - 1) {
+            gNomeJogador[gTamNomeJogador] = (char)key;
+            gTamNomeJogador++;
+            gNomeJogador[gTamNomeJogador] = '\0';
+        }
+        key = GetCharPressed();
+    }
+
+    if (IsKeyPressed(KEY_BACKSPACE) && gTamNomeJogador > 0) {
+        gTamNomeJogador--;
+        gNomeJogador[gTamNomeJogador] = '\0';
+    }
+
+    if (IsKeyPressed(KEY_ENTER) && gTamNomeJogador > 0) {
+        gNomeConfirmado = true;
+        IniciarTransicao(TELA_MENU);
+    }
+
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        CloseWindow();
+    }
+}
+
+void DesenharNomeJogador(void)
+{
+    DesenharFundoBonito();
+
+    const char* titulo = "Digite seu nome";
+    int tamanhoTitulo  = 36;
+    int largura        = MeasureText(titulo, tamanhoTitulo);
+    DrawText(titulo, (largura_tela - largura) / 2, 80, tamanhoTitulo, RAYWHITE);
+
+    DrawText("Use o teclado para digitar.", 220, 150, 20, LIGHTGRAY);
+    DrawText("ENTER para confirmar, BACKSPACE para apagar.", 140, 180, 20, LIGHTGRAY);
+
+    int caixaLargura = 400;
+    int caixaAltura  = 50;
+    int cx = (largura_tela - caixaLargura) / 2;
+    int cy = 250;
+
+    DrawRectangleLines(cx, cy, caixaLargura, caixaAltura, RAYWHITE);
+
+    DrawText(gNomeJogador, cx + 10, cy + 12, 24, YELLOW);
+
+    if (((int)(GetTime() * 2)) % 2 == 0 && gTamNomeJogador < TAM_NOME - 1) {
+        int textoLarg = MeasureText(gNomeJogador, 24);
+        DrawText("_", cx + 10 + textoLarg, cy + 12, 24, YELLOW);
+    }
+}
+
 void DesenharTransicao(void)
 {
     DrawRectangle(0, 0, largura_tela, altura_tela,
@@ -616,4 +676,5 @@ int main(void)
     CloseWindow();
     return 0;
 }
+
 
