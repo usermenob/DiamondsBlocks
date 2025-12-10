@@ -646,6 +646,7 @@ int main(void)
                 case TELA_LIDERES:     AtualizarPlacar();     break;
                 case TELA_GAMEOVER:    AtualizarGameOver();   break;
                 case TELA_NOVORECORDE: /* só desenha */       break;
+                case TELA_NOME_JOGADOR:AtualizarNomeJogador();break;
             }
         }
 
@@ -659,6 +660,7 @@ int main(void)
             case TELA_LIDERES:     DesenharPlacar();      break;
             case TELA_GAMEOVER:    DesenharGameOver();    break;
             case TELA_NOVORECORDE: DesenharNovoRecorde(); break;
+            case TELA_NOME_JOGADOR: DesenharNomeJogador();break;
         }
 
         if (emTransicao) DesenharTransicao();
@@ -676,5 +678,6 @@ int main(void)
     CloseWindow();
     return 0;
 }
+
 
 
