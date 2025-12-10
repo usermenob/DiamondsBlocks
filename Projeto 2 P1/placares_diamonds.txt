@@ -7,4 +7,3 @@ Claudemir;4500
 Mateus;2500
 Claudemir;200
 Raphael ;88
-Viniciu's;60
