@@ -1,3 +1,4 @@
+
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
@@ -230,23 +231,34 @@ void Game_Update(DadosJogo *jogo)
                                                   gNomeJogador,
                                                   jogo->score);
 
-                    if (entrou) {
-                        salvar_placar("placares_diamonds.txt",
-                                      placar,
-                                      qtdPlacar);
+                  if (entrou) {
 
-                        if (qtdPlacar > 0) {
-                            jogo->melhorScore = placar[0].pontuacao;
-                        }
+    salvar_placar("placares_diamonds.txt",
+                  placar,
+                  qtdPlacar);
 
-                        jogo->novoRecorde = true;
-                        PlaySound(sNovoRecorde);
-                        IniciarTransicao(TELA_NOVORECORDE);
-                    } else {
-                        jogo->novoRecorde = false;
-                        IniciarTransicao(TELA_GAMEOVER);
-                    }
-                } else {
+    int melhorAnterior = 0;
+
+    if (qtdPlacar > 0) {
+        melhorAnterior = placar[0].pontuacao;  // assume ordenado
+        jogo->melhorScore = melhorAnterior;
+    }
+
+    // COMPARAÇÃO REAL — AQUI ESTAVA FALTANDO
+    if (jogo->score > melhorAnterior || qtdPlacar == 0) {
+        jogo->novoRecorde = true;
+        PlaySound(sNovoRecorde);
+        IniciarTransicao(TELA_NOVORECORDE);
+    } else {
+        jogo->novoRecorde = false;
+        IniciarTransicao(TELA_GAMEOVER);
+    }
+
+} else {
+    jogo->novoRecorde = false;
+    IniciarTransicao(TELA_GAMEOVER);
+}
+}else {
 
                     jogo->fase++;
 
@@ -361,4 +373,3 @@ void Game_Draw(const DadosJogo *jogo)
                  ALTURA_TELA - 70, 22, LIGHTGRAY);
     }
 }
-
