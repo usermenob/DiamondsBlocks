@@ -9,18 +9,18 @@
 #define altura_tela  500
 #define BOARD_COLS    6
 #define BOARD_ROWS    4
-#define BOARD_SPACING 2.5f 
+#define BOARD_SPACING 2.5f
 
 // ----------------- BLOCO DE CORES E DIMENSÕES DO TABULEIRO -----------------
 
-static const Color COR_FUNDO        = {  5,  10,  30, 255 };  
-static const Color COR_TABULEIRO    = { 12,  20,  55, 255 };  
-static const Color COR_GRID_FRACO   = { 40,  70, 130, 120 }; 
-static const Color COR_GRID_FORTE   = { 70, 110, 180, 180 };  
-static const Color COR_BLOCO_BORDA  = {200, 235, 255, 255 };  
+static const Color COR_FUNDO        = {  5,  10,  30, 255 };
+static const Color COR_TABULEIRO    = { 12,  20,  55, 255 };
+static const Color COR_GRID_FRACO   = { 40,  70, 130, 120 };
+static const Color COR_GRID_FORTE   = { 70, 110, 180, 180 };
+static const Color COR_BLOCO_BORDA  = {200, 235, 255, 255 };
 static const Color COR_SOMBRA       = {  0,   0,   0,  70 };
-static const Color COR_TEXTO_SUCESSO = {  0, 190, 100, 255 }; 
-static const Color COR_TEXTO_ERRO    = {190,  50,  70, 255 };  
+static const Color COR_TEXTO_SUCESSO = {  0, 190, 100, 255 };
+static const Color COR_TEXTO_ERRO    = {190,  50,  70, 255 };
 
 
 static const float BLOCO_SIZE   = 0.7f;
@@ -127,7 +127,7 @@ void GenerateBoxes(int count)
     for (int r = 0; r < rows; r++) {
         for (int c = 0; c < cols; c++) {
             grid[idx].x = startX + c * step;
-            grid[idx].y = 0.5f;         
+            grid[idx].y = 0.5f;
             grid[idx].z = startZ + r * step;
             idx++;
         }
@@ -145,7 +145,7 @@ void GenerateBoxes(int count)
 
     boxCount = count;
     for (int i = 0; i < boxCount; i++) {
-        boxes[i] = grid[i];  
+        boxes[i] = grid[i];
     }
 }
 
@@ -170,14 +170,14 @@ static void DesenharTabuleiro3D(void)
     Vector3 baseSize = { (xMax - xMin), 1.0f, (zMax - zMin) };
     DrawCubeV(basePos, baseSize, COR_TABULEIRO);
 
-  
+
     for (int r = 0; r <= rows; r++) {
         float z = zMin + r * step;
         Color cor = (r == 0 || r == rows) ? COR_GRID_FORTE : COR_GRID_FRACO;
         DrawLine3D((Vector3){ xMin, 0.0f, z }, (Vector3){ xMax, 0.0f, z }, cor);
     }
 
-   
+
     for (int c = 0; c <= cols; c++) {
         float x = xMin + c * step;
         Color cor = (c == 0 || c == cols) ? COR_GRID_FORTE : COR_GRID_FRACO;
@@ -191,22 +191,22 @@ void InitGameplay3D(void)
 {
 
     cameraJogo.position   = (Vector3){ 0.0f, 10.0f, 14.0f };
-    cameraJogo.target     = (Vector3){ 0.0f,  0.0f,  0.0f };  
+    cameraJogo.target     = (Vector3){ 0.0f,  0.0f,  0.0f };
     cameraJogo.up         = (Vector3){ 0.0f,  1.0f,  0.0f };
     cameraJogo.fovy       = 35.0f;
     cameraJogo.projection = CAMERA_PERSPECTIVE;
 
-    
+
     srand((unsigned int)time(NULL));
 
-    
+
     showTime      = 2.0f;
     timerCaixas   = 0.0f;
     state         = SHOW_BOXES;
     playerAnswer  = 0;
     playerCorrect = false;
 
-    
+
     boxCount = GetRandomBoxCount(jogo.fase);
     GenerateBoxes(boxCount);
 }
@@ -259,7 +259,7 @@ void AtualizarGame(void)
 
     switch (state) {
 
-        
+
         case SHOW_BOXES:
             if (timerCaixas >= showTime) {
                 state        = WAIT_INPUT;
@@ -268,7 +268,7 @@ void AtualizarGame(void)
             }
             break;
 
-        
+
         case WAIT_INPUT:
 
             if (IsKeyPressed(KEY_UP)) {
@@ -306,12 +306,12 @@ void AtualizarGame(void)
             }
             break;
 
-        
+
         case SHOW_RESULT:
             if (timerCaixas >= 2.0f) {
 
                 if (jogo.vidas <= 0) {
-                    
+
                       int entrou = atualizar_placar(placar,&qtdPlacar,nomeJogador,jogo.score);
 
                 if (entrou) {
@@ -329,7 +329,7 @@ void AtualizarGame(void)
                     IniciarTransicao(TELA_GAMEOVER);
                 }
                 } else {
-                    
+
                     jogo.fase++;
 
                     showTime -= 0.1f;
@@ -345,7 +345,7 @@ void AtualizarGame(void)
             break;
     }
 
-    
+
     if (IsKeyPressed(KEY_ESCAPE)) {
         PlaySound(sClick);
         IniciarTransicao(TELA_MENU);
@@ -355,54 +355,54 @@ void AtualizarGame(void)
 void DesenharFundoBonito(void)
 {
 
-    Color top    = (Color){  5,  10,  35, 255 };   
-    Color bottom = (Color){  3,   4,  18, 255 }; 
+    Color top    = (Color){  5,  10,  35, 255 };
+    Color bottom = (Color){  3,   4,  18, 255 };
 
     DrawRectangleGradientV(0, 0, largura_tela, altura_tela, top, bottom);
 
 
     Color vignette = (Color){ 0, 0, 0, 70 };
-    DrawRectangle(0, 0, largura_tela, 40, vignette);                      
-    DrawRectangle(0, altura_tela-60, largura_tela, 60, vignette);          
-    DrawRectangle(0, 0, 80, altura_tela, vignette);                        
-    DrawRectangle(largura_tela-80, 0, 80, altura_tela, vignette);          
+    DrawRectangle(0, 0, largura_tela, 40, vignette);
+    DrawRectangle(0, altura_tela-60, largura_tela, 60, vignette);
+    DrawRectangle(0, 0, 80, altura_tela, vignette);
+    DrawRectangle(largura_tela-80, 0, 80, altura_tela, vignette);
 }
 
 void DesenharGameplay(void)
 {
     BeginMode3D(cameraJogo);
 
-    
+
     DesenharTabuleiro3D();
 
-    
+
     Color corCaixa = (Color){  40, 160, 255, 255 };
     if (state == SHOW_RESULT) {
-        corCaixa = playerCorrect ? (Color){  50, 200, 120, 255 }  
-                                 : (Color){ 220,  60,  70, 255 };  
+        corCaixa = playerCorrect ? (Color){  50, 200, 120, 255 }
+                                 : (Color){ 220,  60,  70, 255 };
     }
 
-    
+
     if (state == SHOW_BOXES || state == SHOW_RESULT) {
         for (int i = 0; i < boxCount; i++) {
             Vector3 pos = boxes[i];
 
-            
+
             Vector3 tam = { BLOCO_SIZE, BLOCO_SIZE, BLOCO_SIZE };
 
-            
+
             Vector3 sombraPos = pos;
             sombraPos.y = -0.49f;
             Vector3 sombraTam = { tam.x * 1.3f, 0.08f, tam.z * 1.3f };
             DrawCubeV(sombraPos, sombraTam, COR_SOMBRA);
 
-           
+
             DrawCubeV(pos, tam, corCaixa);
 
-            
+
             DrawCubeWiresV(pos, tam, COR_BLOCO_BORDA);
 
-            
+
             Vector3 topPos  = { pos.x, pos.y + tam.y * 0.51f, pos.z };
             Vector3 topSize = { tam.x * 0.9f, 0.02f, tam.z * 0.9f };
             Color   topCor  = (Color){ 255, 255, 255, 40 };
@@ -446,8 +446,8 @@ else if (state == SHOW_RESULT) {
 
     if (playerCorrect) {
 
-        DrawText("Você acertou! +100",
-                 centroX - MeasureText("Voce acertou! +100", 28)/2,
+        DrawText("Correto! +100",
+                 centroX - MeasureText("Correto! +100", 28)/2,
                  altura_tela - 140, 28, COR_TEXTO_SUCESSO);
     } else if (diff == 1) {
 
@@ -456,8 +456,8 @@ else if (state == SHOW_RESULT) {
                  altura_tela - 140, 28, ORANGE);
     } else {
 
-        DrawText("Você errou!",
-                 centroX - MeasureText("Voce errou!", 30)/2,
+        DrawText("Errado!",
+                 centroX - MeasureText("Errado!", 30)/2,
                  altura_tela - 140, 30, COR_TEXTO_ERRO);
     }
 
@@ -546,7 +546,7 @@ void DesenharMenu(void)
 
 
     // -------- MENU DE OPÇÕES --------
-    const char *opcoes[] = { "Novo Jogo", "Instruções", "Placar", "Sair" };
+    const char *opcoes[] = { "Novo Jogo", "Instrucoes", "Placar", "Sair" };
     int opc = 4;
 
     int iniciarY = 200;
@@ -617,8 +617,8 @@ void DesenharInstrucoes(void)
     Color corTexto = LIGHTGRAY;
 
     DrawText("Algumas caixas aparecem na tela por alguns segundos:", x, y, fontSize, corTexto); y += 26;
-    DrawText("Elas somem e você deve lembrar QUANTAS eram.",         x, y, fontSize, corTexto); y += 26;
-    DrawText("Use as teclas (no jogo real) para responder o número.", x, y, fontSize, corTexto); y += 26;
+    DrawText("Elas somem e voce deve lembrar QUANTAS eram.",         x, y, fontSize, corTexto); y += 26;
+    DrawText("Use as teclas (no jogo real) para responder o numero.", x, y, fontSize, corTexto); y += 26;
     DrawText("Acertos rendem pontos, erros tiram vidas.",             x, y, fontSize, corTexto); y += 36;
 
     DrawText("Teclas principais:", x, y, fontSize+2, RAYWHITE); y += 26;
@@ -657,21 +657,21 @@ void DesenharPlacar(void)
     int size           = 34;
     int largura        = MeasureText(titulo, size);
     DrawText(titulo, (largura_tela - largura)/2, 40, size, RAYWHITE);
-    
+
     if (qtdPlacar == 0) {
         DrawText("Nenhuma partida registrada ainda.",150, 150, 22, LIGHTGRAY);
-    } 
+    }
     else {
         DrawText("Pos  Nome                 Pontos", 150, 120, 20, GRAY);
-        
+
         for (int i = 0; i < qtdPlacar; i++) {
-                
+
             DrawText(TextFormat("%2d. %-15s %6d",i + 1,placar[i].nome,placar[i].pontuacao),150,150 + i * 26,22,RAYWHITE);
         }
-        
-    
 
-        DrawText(TextFormat("Melhor pontuação até agora: %d pontos",placar[0].pontuacao), 150, 150, 22, GOLD);
+
+
+        DrawText(TextFormat("Melhor pontuação ate agora: %d pontos",placar[0].pontuacao), 150, 150, 22, GOLD);
     }
 
 
@@ -701,7 +701,7 @@ void DesenharGameOver(void)
     int largura        = MeasureText(titulo, size);
     DrawText(titulo, (largura_tela - largura)/2, 80, size, RED);
 
-    DrawText(TextFormat("Pontuação final: %d", jogo.score),
+    DrawText(TextFormat("Pontos finais: %d", jogo.score),
              260, 170, 26, RAYWHITE);
     DrawText(TextFormat("Recorde Atual: %d", jogo.melhorScore),
              260, 210, 22, LIGHTGRAY);
@@ -720,7 +720,7 @@ void DesenharNovoRecorde(void)
     int largura        = MeasureText(titulo, size);
     DrawText(titulo, (largura_tela - largura)/2, 80, size, GOLD);
 
-    DrawText(TextFormat("Sua pontuação: %d", jogo.score),
+    DrawText(TextFormat("Sua pontuacao: %d", jogo.score),
              260, 170, 26, RAYWHITE);
     DrawText(TextFormat("Novo recorde do jogo: %d", jogo.melhorScore),
              260, 210, 22, LIGHTGRAY);
@@ -741,7 +741,7 @@ int main(void)
     InitAudioDevice();
 
     SetMasterVolume(1.0f);
-    
+
     sClick       = LoadSound("assets/click.wav");
     sAcertou     = LoadSound("assets/correct.wav");
     sErrou       = LoadSound("assets/error.wav");
