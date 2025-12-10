@@ -382,7 +382,16 @@ void DesenharPlacar(void)
              LIGHTGRAY);
 }
 
-
+void AtualizarNovoRecorde(void)
+{
+    // Aqui você coloca as teclas que fazem o jogador continuar.
+    // Normalmente ENTER ou ESPAÇO.
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))
+    {
+        // Depois de ver o novo recorde, vai para o Game Over normal
+        IniciarTransicao(TELA_GAMEOVER);
+    }
+}
 
 static void AtualizarGameOver(void)
 {
@@ -504,7 +513,7 @@ void Visual_Update(void)
             AtualizarGameOver();
             break;
         case TELA_NOVORECORDE:
-            AtualizarGameOver();
+            AtualizarNovoRecorde();
             break;
     }
 }
@@ -534,6 +543,7 @@ void Visual_Draw(void)
             DesenharGameOver();
             break;
         case TELA_NOVORECORDE:
+            AtualizarNovoRecorde();
             DesenharNovoRecorde();
             break;
     }
