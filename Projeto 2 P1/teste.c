@@ -1,20 +1,56 @@
-#include "diamonds_Blocks_Visual.h"
+#include "raylib.h"
 #include <math.h>
-
-#define largura_tela LARGURA_TELA
-#define altura_tela  ALTURA_TELA
-
-RegistroPlacar gPlacar[MAX_JOGADORES];
-int gQuantidadePlacar = 0;
+#include <stdlib.h>
+#include <time.h>
+#include "placar.h"
 
 
-char gNomeJogador[TAM_NOME] = "";
-int  gTamNomeJogador       = 0;
-bool gNomeConfirmado       = false;
+#define largura_tela 900
+#define altura_tela  500
+#define BOARD_COLS    6
+#define BOARD_ROWS    4
+#define BOARD_SPACING 2.5f 
 
+// ----------------- BLOCO DE CORES E DIMENSÕES DO TABULEIRO -----------------
+
+static const Color COR_FUNDO        = {  5,  10,  30, 255 };  
+static const Color COR_TABULEIRO    = { 12,  20,  55, 255 };  
+static const Color COR_GRID_FRACO   = { 40,  70, 130, 120 }; 
+static const Color COR_GRID_FORTE   = { 70, 110, 180, 180 };  
+static const Color COR_BLOCO_BORDA  = {200, 235, 255, 255 };  
+static const Color COR_SOMBRA       = {  0,   0,   0,  70 };
+static const Color COR_TEXTO_SUCESSO = {  0, 190, 100, 255 }; 
+static const Color COR_TEXTO_ERRO    = {190,  50,  70, 255 };  
+
+
+static const float BLOCO_SIZE   = 0.7f;
+
+// -------------------------------------------------------------------------------
+typedef enum {
+    TELA_MENU = 0,
+    TELA_INSTRUCOES,
+    TELA_GAMEPLAY,
+    TELA_LIDERES,
+    TELA_GAMEOVER,
+    TELA_NOVORECORDE
+} TelasJogo;
+
+
+typedef struct {
+    int score;
+    int melhorScore;
+    int vidas;
+    int fase;
+    bool novoRecorde;
+} DadosJogo;
 
 TelasJogo tela_atual = TELA_MENU;
 DadosJogo jogo;
+
+RegistroPlacar placar[MAX_JOGADORES];
+int qtdPlacar = 0;
+
+char nomeJogador[TAM_NOME] = "Jogador";
 
 
 Sound sClick;
@@ -23,66 +59,169 @@ Sound sErrou;
 Sound sNovoRecorde;
 Music music;
 
+float masterVolume = 1.0f;
+float musicVolume  = 0.5f;
+float sfxVolume    = 0.9f;
 
-#define NUM_CAIXAS 9
-Caixa caixas[NUM_CAIXAS];
+typedef enum{
+    SHOW_BOXES,
+    WAIT_INPUT,
+    SHOW_RESULT
+} GameState;
 
-bool  emTransicao    = false;
-float transicaoAlpha = 0.0f;
+#define MAX_BOXES 50
+
+Camera3D cameraJogo = {0};
+
+int boxCount = 0;
+float showTime = 2.0f;
+float timerCaixas = 0.0f;
+
+int playerAnswer = 0;
+bool playerCorrect = false;
+
+GameState state = SHOW_BOXES;
+Vector3 boxes[MAX_BOXES];
+
+bool  emTransicao     = false;
+float transicaoAlpha  = 0.0f;
 TelasJogo proximaTela;
 
-// Menu
+
 int menuOpcoes = 0;
 
+int GetRandomBoxCount(int round)
+{
+    if (round == 1) return GetRandomValue(3, 4);
+    if (round == 2) return GetRandomValue(4, 6);
+    if (round == 3) return GetRandomValue(5, 7);
+    if (round == 4) return GetRandomValue(6, 9);
 
-void InicializarCaixas(void) {
 
-    Rectangle playArea = (Rectangle){120, 90, largura_tela - 240, altura_tela - 180};
+    int qtd = GetRandomValue(7, 12);
 
-    int linhas  = 3;
-    int colunas = 3;
 
-    float cellW = playArea.width  / colunas;
-    float cellH = playArea.height / linhas;
+    if (qtd > MAX_BOXES) qtd = MAX_BOXES;
 
-    float baseSize = (cellW < cellH) ? cellW : cellH;
-    float caixaW   = baseSize * 0.70f;
-    float caixaH   = baseSize * 0.60f;
+    return qtd;
+}
 
+void GenerateBoxes(int count)
+{
+    const int cols    = BOARD_COLS;
+    const int rows    = BOARD_ROWS;
+    const float step  = BOARD_SPACING;
+
+
+    float boardW = (cols - 1) * step;
+    float boardD = (rows - 1) * step;
+
+
+    float startX = -boardW/2.0f;
+    float startZ = -boardD/2.0f;
+
+    Vector3 grid[BOARD_COLS * BOARD_ROWS];
+    int totalCells = cols * rows;
     int idx = 0;
-    for (int linha = 0; linha < linhas; linha++) {
-        for (int col = 0; col < colunas; col++) {
-            if (idx >= NUM_CAIXAS) break;
 
-            float centerX = playArea.x + col * cellW + cellW/2.0f;
-            float centerY = playArea.y + linha * cellH + cellH/2.0f;
-
-            float x = centerX - caixaW/2.0f;
-            float y = centerY - caixaH/2.0f;
-
-            caixas[idx].rect  = (Rectangle){ x, y, caixaW, caixaH };
-            caixas[idx].ativa = false;
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            grid[idx].x = startX + c * step;
+            grid[idx].y = 0.5f;         
+            grid[idx].z = startZ + r * step;
             idx++;
         }
     }
 
-    // Apenas um padrão fictício para ficar bonitinho
-    if (NUM_CAIXAS >= 3) {
-        caixas[0].ativa = true;
-        caixas[4].ativa = true;
-        caixas[8].ativa = true;
+
+    for (int i = totalCells - 1; i > 0; i--) {
+        int j = rand() % (i + 1);
+        Vector3 tmp = grid[i];
+        grid[i] = grid[j];
+        grid[j] = tmp;
+    }
+
+    if (count > totalCells) count = totalCells;
+
+    boxCount = count;
+    for (int i = 0; i < boxCount; i++) {
+        boxes[i] = grid[i];  
     }
 }
+
+
+
+static void DesenharTabuleiro3D(void)
+{
+    const int cols    = BOARD_COLS;
+    const int rows    = BOARD_ROWS;
+    const float step  = BOARD_SPACING;
+
+    float boardW = (cols - 1) * step;
+    float boardD = (rows - 1) * step;
+
+    float xMin = -boardW/2.0f - step*0.5f;
+    float xMax =  boardW/2.0f + step*0.5f;
+    float zMin = -boardD/2.0f - step*0.5f;
+    float zMax =  boardD/2.0f + step*0.5f;
+
+
+    Vector3 basePos  = { 0.0f, -0.52f, 0.0f };
+    Vector3 baseSize = { (xMax - xMin), 1.0f, (zMax - zMin) };
+    DrawCubeV(basePos, baseSize, COR_TABULEIRO);
+
+  
+    for (int r = 0; r <= rows; r++) {
+        float z = zMin + r * step;
+        Color cor = (r == 0 || r == rows) ? COR_GRID_FORTE : COR_GRID_FRACO;
+        DrawLine3D((Vector3){ xMin, 0.0f, z }, (Vector3){ xMax, 0.0f, z }, cor);
+    }
+
+   
+    for (int c = 0; c <= cols; c++) {
+        float x = xMin + c * step;
+        Color cor = (c == 0 || c == cols) ? COR_GRID_FORTE : COR_GRID_FRACO;
+        DrawLine3D((Vector3){ x, 0.0f, zMin }, (Vector3){ x, 0.0f, zMax }, cor);
+    }
+}
+
+
+
+void InitGameplay3D(void)
+{
+
+    cameraJogo.position   = (Vector3){ 0.0f, 10.0f, 14.0f };
+    cameraJogo.target     = (Vector3){ 0.0f,  0.0f,  0.0f };  
+    cameraJogo.up         = (Vector3){ 0.0f,  1.0f,  0.0f };
+    cameraJogo.fovy       = 35.0f;
+    cameraJogo.projection = CAMERA_PERSPECTIVE;
+
+    
+    srand((unsigned int)time(NULL));
+
+    
+    showTime      = 2.0f;
+    timerCaixas   = 0.0f;
+    state         = SHOW_BOXES;
+    playerAnswer  = 0;
+    playerCorrect = false;
+
+    
+    boxCount = GetRandomBoxCount(jogo.fase);
+    GenerateBoxes(boxCount);
+}
+
 
 void ResetGame(void)
 {
     jogo.score       = 0;
-    jogo.vidas       = 3;
+    jogo.vidas       = 5;
     jogo.fase        = 1;
     jogo.novoRecorde = false;
 
-    InicializarCaixas();
+    InitGameplay3D();
 }
+
 
 void IniciarTransicao(TelasJogo tela)
 {
@@ -102,86 +241,7 @@ void AtualizarTransicao(void)
 
         if (tela_atual == TELA_GAMEPLAY) {
             ResetGame();
-            InitGame();
         }
-    }
-}
-
-void FimPartida(void)
-{
-    int entrou = atualizar_placar(gPlacar, &gQuantidadePlacar, gNomeJogador, jogo.score);
-
-    if (entrou) {
-        salvar_placar(ARQUIVO_PLACAR, gPlacar, gQuantidadePlacar);
-
-        if (gQuantidadePlacar > 0) {
-            jogo.melhorScore = gPlacar[0].pontuacao;
-        }
-
-        jogo.novoRecorde = true;
-        PlaySound(sNovoRecorde);
-        IniciarTransicao(TELA_NOVORECORDE);
-    } else {
-        jogo.novoRecorde = false;
-        IniciarTransicao(TELA_GAMEOVER);
-    }
-}
-
-
-void AtualizarNomeJogador(void)
-{
-    int key = GetCharPressed();
-
-    while (key > 0) {
-        if (key >= 32 && key <= 125 && gTamNomeJogador < TAM_NOME - 1) {
-            gNomeJogador[gTamNomeJogador] = (char)key;
-            gTamNomeJogador++;
-            gNomeJogador[gTamNomeJogador] = '\0';
-        }
-        key = GetCharPressed();
-    }
-
-    if (IsKeyPressed(KEY_BACKSPACE) && gTamNomeJogador > 0) {
-        gTamNomeJogador--;
-        gNomeJogador[gTamNomeJogador] = '\0';
-    }
-
-    if (IsKeyPressed(KEY_ENTER) && gTamNomeJogador > 0) {
-        gNomeConfirmado = true;
-        IniciarTransicao(TELA_MENU);
-    }
-
-    if (IsKeyPressed(KEY_ESCAPE)) {
-        CloseWindow();
-    }
-}
-
-void DesenharFundoBonito(void);
-
-void DesenharNomeJogador(void)
-{
-    DesenharFundoBonito();
-
-    const char* titulo = "Digite seu nome";
-    int tamanhoTitulo  = 36;
-    int largura        = MeasureText(titulo, tamanhoTitulo);
-    DrawText(titulo, (largura_tela - largura) / 2, 80, tamanhoTitulo, RAYWHITE);
-
-    DrawText("Use o teclado para digitar.", 220, 150, 20, LIGHTGRAY);
-    DrawText("ENTER para confirmar, BACKSPACE para apagar.", 140, 180, 20, LIGHTGRAY);
-
-    int caixaLargura = 400;
-    int caixaAltura  = 50;
-    int cx = (largura_tela - caixaLargura) / 2;
-    int cy = 250;
-
-    DrawRectangleLines(cx, cy, caixaLargura, caixaAltura, RAYWHITE);
-
-    DrawText(gNomeJogador, cx + 10, cy + 12, 24, YELLOW);
-
-    if (((int)(GetTime() * 2)) % 2 == 0 && gTamNomeJogador < TAM_NOME - 1) {
-        int textoLarg = MeasureText(gNomeJogador, 24);
-        DrawText("_", cx + 10 + textoLarg, cy + 12, 24, YELLOW);
     }
 }
 
@@ -191,132 +251,227 @@ void DesenharTransicao(void)
                   (Color){0, 0, 0, (unsigned char)(transicaoAlpha * 255)});
 }
 
+
 void AtualizarGame(void)
 {
     float dt = GetFrameTime();
+    timerCaixas += dt;
 
-    UpdateGame(dt);
+    switch (state) {
 
-    jogo.score = Game_GetScore();
-    jogo.vidas = Game_GetLives();
-    jogo.fase  = Game_GetRound();
+        
+        case SHOW_BOXES:
+            if (timerCaixas >= showTime) {
+                state        = WAIT_INPUT;
+                timerCaixas  = 0.0f;
+                playerAnswer = 0;
+            }
+            break;
 
+        
+        case WAIT_INPUT:
+
+            if (IsKeyPressed(KEY_UP)) {
+                playerAnswer++;
+                PlaySound(sClick);
+            }
+
+            if (IsKeyPressed(KEY_DOWN)) {
+                if (playerAnswer > 0) playerAnswer--;
+                PlaySound(sClick);
+            }
+
+            if (timerCaixas >= 3.0f) {
+                state       = SHOW_RESULT;
+                timerCaixas = 0.0f;
+
+                int diff = abs(playerAnswer - boxCount);
+
+                if (diff == 0) {
+                    jogo.score    += 100;
+                    playerCorrect  = true;
+                    PlaySound(sAcertou);
+                } else {
+                    playerCorrect = false;
+
+                    if (diff == 1) {
+                        jogo.score += 50;
+                        PlaySound(sAcertou);
+                    } else {
+                        PlaySound(sErrou);
+                    }
+
+                    jogo.vidas--;
+                }
+            }
+            break;
+
+        
+        case SHOW_RESULT:
+            if (timerCaixas >= 2.0f) {
+
+                if (jogo.vidas <= 0) {
+                    
+                      int entrou = atualizar_placar(placar,&qtdPlacar,nomeJogador,jogo.score);
+
+                if (entrou) {
+                    salvar_placar("placares_diamonds.txt", placar, qtdPlacar);
+
+                    if (qtdPlacar > 0) {
+                        jogo.melhorScore = placar[0].pontuacao;
+                    }
+
+                    jogo.novoRecorde = true;
+                    PlaySound(sNovoRecorde);
+                    IniciarTransicao(TELA_NOVORECORDE);
+                } else {
+                    jogo.novoRecorde = false;
+                    IniciarTransicao(TELA_GAMEOVER);
+                }
+                } else {
+                    
+                    jogo.fase++;
+
+                    showTime -= 0.1f;
+                    if (showTime < 1.0f) showTime = 1.0f;
+
+                    boxCount    = GetRandomBoxCount(jogo.fase);
+                    GenerateBoxes(boxCount);
+
+                    timerCaixas = 0.0f;
+                    state       = SHOW_BOXES;
+                }
+            }
+            break;
+    }
+
+    
     if (IsKeyPressed(KEY_ESCAPE)) {
         PlaySound(sClick);
         IniciarTransicao(TELA_MENU);
     }
-
-    if (IsKeyPressed(KEY_ENTER)) {
-        FimPartida();
-    }
-
-    if (jogo.vidas <= 0) {
-        FimPartida();
-    }
-}
-
-void DesenharCaixa3D(Caixa c)
-{
-    float t = GetTime();
-
-    float bounce = 0.0f;
-    if (c.ativa) {
-        bounce = sinf(t * 6.0f) * 3.0f;
-    }
-
-    Rectangle face = c.rect;
-    face.y += bounce;
-
-    float offset = 12.0f;
-
-    Color corFrenteOff = (Color){ 40, 70,130, 255 };
-    Color corTopoOff   = (Color){ 60, 95,160, 255 };
-    Color corLadoOff   = (Color){ 25, 45,100, 255 };
-
-    Color corFrenteOn  = (Color){  60,190,255, 255 };
-    Color corTopoOn    = (Color){ 150,230,255, 255 };
-    Color corLadoOn    = (Color){  30,120,210, 255 };
-
-    Color corFrente = c.ativa ? corFrenteOn : corFrenteOff;
-    Color corTopo   = c.ativa ? corTopoOn   : corTopoOff;
-    Color corLado   = c.ativa ? corLadoOn   : corLadoOff;
-
-    float pulso = 0.08f * sinf(t * 3.0f);
-    corFrente = Fade(corFrente, 1.0f + pulso);
-
-    Rectangle frente = face;
-
-    Vector2 p1 = (Vector2){ frente.x,                  frente.y };
-    Vector2 p2 = (Vector2){ frente.x + frente.width,   frente.y };
-    Vector2 p3 = (Vector2){ p2.x + offset,             p2.y - offset };
-    Vector2 p4 = (Vector2){ p1.x + offset,             p1.y - offset };
-
-    Vector2 p5 = (Vector2){ frente.x,                  frente.y + frente.height };
-    Vector2 p6 = (Vector2){ frente.x + frente.width,   frente.y + frente.height };
-    Vector2 p7 = (Vector2){ p6.x + offset,             p6.y - offset };
-
-    DrawEllipse((int)(frente.x + frente.width/2),
-                (int)(frente.y + frente.height + 8),
-                (int)(frente.width/2),
-                6,
-                (Color){0, 0, 0, 80});
-
-    DrawRectangleRec(frente, corFrente);
-
-    DrawTriangle(p1, p2, p4, corTopo);
-    DrawTriangle(p2, p3, p4, corTopo);
-
-    DrawTriangle(p2, p6, p3, corLado);
-    DrawTriangle(p6, p7, p3, corLado);
-
-    Color linha = (Color){ 210, 230, 255, 220 };
-    DrawLineEx(p1, p2, 1.5f, linha);
-    DrawLineEx(p2, p3, 1.5f, linha);
-    DrawLineEx(p3, p4, 1.5f, linha);
-    DrawLineEx(p4, p1, 1.5f, linha);
-
-    DrawLineEx(p2, p6, 1.5f, linha);
-    DrawLineEx(p6, p7, 1.5f, linha);
-    DrawLineEx(p7, p3, 1.5f, linha);
-
-    DrawLineEx(p1, p5, 1.5f, Fade(linha, 0.6f));
-    DrawLineEx(p5, p6, 1.5f, Fade(linha, 0.6f));
 }
 
 void DesenharFundoBonito(void)
 {
-    Color top    = (Color){  5,  10,  35, 255 };
-    Color bottom = (Color){  3,   4,  18, 255 };
+
+    Color top    = (Color){  5,  10,  35, 255 };   
+    Color bottom = (Color){  3,   4,  18, 255 }; 
 
     DrawRectangleGradientV(0, 0, largura_tela, altura_tela, top, bottom);
 
+
     Color vignette = (Color){ 0, 0, 0, 70 };
-    DrawRectangle(0, 0, largura_tela, 40, vignette);
-    DrawRectangle(0, altura_tela-60, largura_tela, 60, vignette);
-    DrawRectangle(0, 0, 80, altura_tela, vignette);
-    DrawRectangle(largura_tela-80, 0, 80, altura_tela, vignette);
+    DrawRectangle(0, 0, largura_tela, 40, vignette);                      
+    DrawRectangle(0, altura_tela-60, largura_tela, 60, vignette);          
+    DrawRectangle(0, 0, 80, altura_tela, vignette);                        
+    DrawRectangle(largura_tela-80, 0, 80, altura_tela, vignette);          
 }
 
-void DesenharGameplay_Interface2D(void)
+void DesenharGameplay(void)
 {
-    DesenharFundoBonito();
+    BeginMode3D(cameraJogo);
 
-    DrawText("Rodada de Memoria", 40, 20, 28, RAYWHITE);
+    
+    DesenharTabuleiro3D();
 
-    DrawText(TextFormat("Pontos: %d",  jogo.score),       40,  70, 20, LIGHTGRAY);
-    DrawText(TextFormat("Vidas: %d",   jogo.vidas),       40, 100, 20, LIGHTGRAY);
-    DrawText(TextFormat("Rodada: %d",  jogo.fase),        40, 130, 20, LIGHTGRAY);
-    DrawText(TextFormat("Recorde: %d", jogo.melhorScore), largura_tela - 220, 70, 20, GOLD);
-
-    DrawText("ESC = Menu", largura_tela - 180, altura_tela - 40, 18, GRAY);
-
-    DrawText("No jogo final, a contagem sera feita pela logica 3D.", 150, altura_tela - 60, 18, SKYBLUE);
-
-    for (int i = 0; i < NUM_CAIXAS; i++) {
-        DesenharCaixa3D(caixas[i]);
+    
+    Color corCaixa = (Color){  40, 160, 255, 255 };
+    if (state == SHOW_RESULT) {
+        corCaixa = playerCorrect ? (Color){  50, 200, 120, 255 }  
+                                 : (Color){ 220,  60,  70, 255 };  
     }
+
+    
+    if (state == SHOW_BOXES || state == SHOW_RESULT) {
+        for (int i = 0; i < boxCount; i++) {
+            Vector3 pos = boxes[i];
+
+            
+            Vector3 tam = { BLOCO_SIZE, BLOCO_SIZE, BLOCO_SIZE };
+
+            
+            Vector3 sombraPos = pos;
+            sombraPos.y = -0.49f;
+            Vector3 sombraTam = { tam.x * 1.3f, 0.08f, tam.z * 1.3f };
+            DrawCubeV(sombraPos, sombraTam, COR_SOMBRA);
+
+           
+            DrawCubeV(pos, tam, corCaixa);
+
+            
+            DrawCubeWiresV(pos, tam, COR_BLOCO_BORDA);
+
+            
+            Vector3 topPos  = { pos.x, pos.y + tam.y * 0.51f, pos.z };
+            Vector3 topSize = { tam.x * 0.9f, 0.02f, tam.z * 0.9f };
+            Color   topCor  = (Color){ 255, 255, 255, 40 };
+            DrawCubeV(topPos, topSize, topCor);
+        }
+    }
+
+    EndMode3D();
+
+    // ---------------- HUD 2D ----------------
+    DrawText("Diamonds Blocks", 20, 10, 28, RAYWHITE);
+
+    DrawText(TextFormat("Pontos: %d", jogo.score),       20, 50, 20, LIGHTGRAY);
+    DrawText(TextFormat("Vidas: %d",  jogo.vidas),       20, 80, 20, LIGHTGRAY);
+    DrawText(TextFormat("Rodada: %d", jogo.fase),        20,110, 20, LIGHTGRAY);
+    DrawText(TextFormat("Recorde: %d", jogo.melhorScore),
+             20, 140, 20, GOLD);
+
+    int centroX = largura_tela / 2;
+
+    if (state == WAIT_INPUT) {
+    DrawText("Use SETA CIMA/BAIXO para responder quantas caixas viu",
+             centroX - MeasureText("Use SETA CIMA/BAIXO para responder quantas caixas viu", 18)/2,
+             altura_tela - 140, 18, LIGHTGRAY);
+
+    DrawText("Sua resposta:",
+             centroX - 80,
+             altura_tela - 110, 24, RAYWHITE);
+
+    DrawText(TextFormat("%d", playerAnswer),
+             centroX - 10,
+             altura_tela - 80, 36, (Color){180, 120, 250, 255});
+
+    DrawText(TextFormat("Tempo restante: %.1f", 3.0f - timerCaixas),
+             centroX - 100,
+             altura_tela - 40, 20, (Color){255, 230, 120, 255});
+}
+else if (state == SHOW_RESULT) {
+
+    int diff = abs(playerAnswer - boxCount);
+
+    if (playerCorrect) {
+
+        DrawText("Você acertou! +100",
+                 centroX - MeasureText("Voce acertou! +100", 28)/2,
+                 altura_tela - 140, 28, COR_TEXTO_SUCESSO);
+    } else if (diff == 1) {
+
+        DrawText("Foi quase! +50",
+                 centroX - MeasureText("Foi quase! +50", 28)/2,
+                 altura_tela - 140, 28, ORANGE);
+    } else {
+
+        DrawText("Você errou!",
+                 centroX - MeasureText("Voce errou!", 30)/2,
+                 altura_tela - 140, 30, COR_TEXTO_ERRO);
+    }
+
+
+    DrawText(TextFormat("Caixas corretas: %d", boxCount),
+             centroX - MeasureText("Caixas corretas: 00", 22)/2,
+             altura_tela - 100, 22, LIGHTGRAY);
+
+    DrawText(TextFormat("Sua resposta: %d", playerAnswer),
+             centroX - MeasureText("Sua resposta: 00", 22)/2,
+             altura_tela - 70, 22, LIGHTGRAY);
 }
 
+}
 
 
 void AtualizarMenu(void)
@@ -350,22 +505,48 @@ void DesenharMenu(void)
 {
     DesenharFundoBonito();
 
+    // Faixa escura no topo (se não quiser, pode remover)
     DrawRectangle(0, 40, largura_tela, 70, (Color){0, 0, 0, 40});
 
-    const char *titulo      = "JOGO DE MEMORIA";
-    int tamFonteTitulo      = 40;
-    int tituloLargura       = MeasureText(titulo, tamFonteTitulo);
-    int tituloX             = (largura_tela - tituloLargura) / 2;
+    // -------- TÍTULO COM LETRAS PULANDO --------
+    const char *titulo = "Diamonds Blocks";
+    int fontSize = 40;
+    int len = TextLength(titulo);
+    float tempo = GetTime();
 
-    float tempo   = GetTime();
-    float escala  = 1.0f + 0.03f * sinf(tempo * 2.5f);
-    int tamanho   = (int)(tamFonteTitulo * escala);
+    int letterSpacing = 2;           // espaço extra entre letras (ajusta se quiser)
+    int widths[64];                  // tamanho suficiente pro título
+    int totalW = 0;
 
-    DrawText(titulo, tituloX, 50, tamanho, RAYWHITE);
-    int lineY = 50 + tamanho + 8;
-    DrawRectangle(tituloX, lineY, tituloLargura, 2, (Color){255, 230, 80, 200});
+    // calcula largura de cada caractere e a largura total
+    for (int i = 0; i < len; i++) {
+        char ch[2] = { titulo[i], '\0' };
+        widths[i] = MeasureText(ch, fontSize);
+        totalW += widths[i];
+        if (i < len - 1) totalW += letterSpacing;
+    }
 
-    const char *opcoes[] = { "Novo Jogo", "Instrucoes", "Placar", "Sair" };
+    int startX = (largura_tela - totalW) / 2;
+    int baseY  = 60;
+    int x      = startX;
+
+    for (int i = 0; i < len; i++) {
+        char ch[2] = { titulo[i], '\0' };
+
+        float offset = 4.0f * sinf(tempo * 3.0f + i * 0.4f);
+
+        DrawText(ch,
+                 x,
+                 baseY + (int)offset,
+                 fontSize,
+                 RAYWHITE);
+
+        x += widths[i] + letterSpacing;
+    }
+
+
+    // -------- MENU DE OPÇÕES --------
+    const char *opcoes[] = { "Novo Jogo", "Instruções", "Placar", "Sair" };
     int opc = 4;
 
     int iniciarY = 200;
@@ -373,29 +554,34 @@ void DesenharMenu(void)
 
     for (int i = 0; i < opc; i++) {
         Color color  = LIGHTGRAY;
-        int fontSize = 24;
+        int fontSizeOp = 24;
 
         int y = iniciarY + i * espacoY;
-        int textoLargura = MeasureText(opcoes[i], fontSize);
+        int textoLargura = MeasureText(opcoes[i], fontSizeOp);
         int x = (largura_tela - textoLargura) / 2;
 
         if (i == menuOpcoes) {
             DrawRectangleRounded(
-                (Rectangle){x - 20, y - 6, textoLargura + 40, fontSize + 12},
-                0.4f, 8, (Color){40, 80, 160, 140}
+                (Rectangle){ x - 20, y - 6, textoLargura + 40, fontSizeOp + 12 },
+                0.4f, 8,
+                (Color){40, 80, 160, 140}
             );
 
-            color    = YELLOW;
-            fontSize = 28;
+            color      = YELLOW;
+            fontSizeOp = 28;
+            textoLargura = MeasureText(opcoes[i], fontSizeOp);
+            x = (largura_tela - textoLargura) / 2;
         }
 
-        DrawText(opcoes[i], x, y, fontSize, color);
+        DrawText(opcoes[i], x, y, fontSizeOp, color);
     }
 
     DrawText("Use SETA CIMA/BAIXO e ENTER",
              (largura_tela - MeasureText("Use SETA CIMA/BAIXO e ENTER", 18))/2,
              altura_tela - 40, 18, GRAY);
 }
+
+
 
 void AtualizarInstrucoes(void)
 {
@@ -431,11 +617,13 @@ void DesenharInstrucoes(void)
     Color corTexto = LIGHTGRAY;
 
     DrawText("Algumas caixas aparecem na tela por alguns segundos:", x, y, fontSize, corTexto); y += 26;
-    DrawText("Elas somem e voce deve lembrar QUANTAS eram.",         x, y, fontSize, corTexto); y += 26;
-    DrawText("Use as teclas (no jogo real) para responder o numero.", x, y, fontSize, corTexto); y += 26;
+    DrawText("Elas somem e você deve lembrar QUANTAS eram.",         x, y, fontSize, corTexto); y += 26;
+    DrawText("Use as teclas (no jogo real) para responder o número.", x, y, fontSize, corTexto); y += 26;
     DrawText("Acertos rendem pontos, erros tiram vidas.",             x, y, fontSize, corTexto); y += 36;
 
-    DrawText("No prototipo atual, a logica 3D da Pessoa 1 faz a contagem.", x, y, fontSize, corTexto); y += 26;
+    DrawText("Teclas principais:", x, y, fontSize+2, RAYWHITE); y += 26;
+    DrawText("    SETA CIMA      -> Aumentar seu palpite",  x+30, y, fontSize, corTexto); y += 22;
+    DrawText("    SETA BAIXO  -> Diminuir seu palpite", x+30, y, fontSize, corTexto); y += 22;
 
     const char *enterTxt   = "ENTER para comecar";
     int enterSize          = 22;
@@ -453,7 +641,6 @@ void DesenharInstrucoes(void)
 }
 
 
-
 void AtualizarPlacar(void)
 {
     if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) {
@@ -466,29 +653,27 @@ void DesenharPlacar(void)
 {
     DesenharFundoBonito();
 
-    const char *titulo = "Placar - Top 10";
+    const char *titulo = "Placar";
     int size           = 34;
     int largura        = MeasureText(titulo, size);
     DrawText(titulo, (largura_tela - largura)/2, 40, size, RAYWHITE);
-
-    if (gQuantidadePlacar == 0) {
-        DrawText("Nenhuma partida registrada ainda.", 150, 150, 22, LIGHTGRAY);
-    } else {
+    
+    if (qtdPlacar == 0) {
+        DrawText("Nenhuma partida registrada ainda.",150, 150, 22, LIGHTGRAY);
+    } 
+    else {
         DrawText("Pos  Nome                 Pontos", 150, 120, 20, GRAY);
-
-        for (int i = 0; i < gQuantidadePlacar; i++) {
-            DrawText(
-                TextFormat("%2d. %-15s %6d",
-                           i + 1,
-                           gPlacar[i].nome,
-                           gPlacar[i].pontuacao),
-                150, 150 + (i * 26), 22, RAYWHITE
-            );
+        
+        for (int i = 0; i < qtdPlacar; i++) {
+                
+            DrawText(TextFormat("%2d. %-15s %6d",i + 1,placar[i].nome,placar[i].pontuacao),150,150 + i * 26,22,RAYWHITE);
         }
+        
+    
 
-        DrawText(TextFormat("Melhor pontuacao: %d pontos", gPlacar[0].pontuacao),
-                 150, 150 + gQuantidadePlacar * 26 + 20, 22, GOLD);
+        DrawText(TextFormat("Melhor pontuação até agora: %d pontos",placar[0].pontuacao), 150, 150, 22, GOLD);
     }
+
 
     DrawText("ESC ou ENTER para voltar", 260, altura_tela - 50, 18, GRAY);
 }
@@ -516,27 +701,26 @@ void DesenharGameOver(void)
     int largura        = MeasureText(titulo, size);
     DrawText(titulo, (largura_tela - largura)/2, 80, size, RED);
 
-    DrawText(TextFormat("Pontuacao final: %d", jogo.score),
+    DrawText(TextFormat("Pontuação final: %d", jogo.score),
              260, 170, 26, RAYWHITE);
     DrawText(TextFormat("Recorde Atual: %d", jogo.melhorScore),
              260, 210, 22, LIGHTGRAY);
 
-    DrawText("ENTER - Jogar novamente", 260, 280, 20, GREEN);
+    DrawText("ENTER - Jogar Novamente", 260, 280, 20, GREEN);
     DrawText("ESC   - Voltar ao menu",  260, 310, 20, GRAY);
 }
 
 
-
 void DesenharNovoRecorde(void)
 {
-    ClearBackground((Color){4, 30, 40, 255});
+
 
     const char *titulo = "NOVO RECORDE!";
     int size           = 42;
     int largura        = MeasureText(titulo, size);
     DrawText(titulo, (largura_tela - largura)/2, 80, size, GOLD);
 
-    DrawText(TextFormat("Sua pontuacao: %d", jogo.score),
+    DrawText(TextFormat("Sua pontuação: %d", jogo.score),
              260, 170, 26, RAYWHITE);
     DrawText(TextFormat("Novo recorde do jogo: %d", jogo.melhorScore),
              260, 210, 22, LIGHTGRAY);
@@ -551,114 +735,80 @@ void DesenharNovoRecorde(void)
 }
 
 
-
-void Visual_Init(void)
+int main(void)
 {
-
+    InitWindow(largura_tela, altura_tela, "Diamonds Blocks - Interface");
     InitAudioDevice();
 
+    SetMasterVolume(1.0f);
+    
     sClick       = LoadSound("assets/click.wav");
     sAcertou     = LoadSound("assets/correct.wav");
     sErrou       = LoadSound("assets/error.wav");
     sNovoRecorde = LoadSound("assets/new_record.wav");
     music        = LoadMusicStream("assets/music.ogg");
 
+    SetMasterVolume(masterVolume);
+    SetMusicVolume(music, musicVolume);
+    SetSoundVolume(sClick,       sfxVolume);
+    SetSoundVolume(sAcertou,     sfxVolume);
+    SetSoundVolume(sErrou,       sfxVolume);
+    SetSoundVolume(sNovoRecorde, sfxVolume);
+
     PlayMusicStream(music);
 
+    qtdPlacar = carregar_placar("placares_diamonds.txt", placar, MAX_JOGADORES);
 
-    gQuantidadePlacar = carregar_placar(ARQUIVO_PLACAR, gPlacar, MAX_JOGADORES);
-
-    if (gQuantidadePlacar > 0) {
-        jogo.melhorScore = gPlacar[0].pontuacao;
+    if (qtdPlacar > 0) {
+        jogo.melhorScore = placar[0].pontuacao;
     } else {
         jogo.melhorScore = 0;
     }
 
-
-    tela_atual = TELA_NOME_JOGADOR;
     ResetGame();
-}
+    SetTargetFPS(60);
 
-void Visual_Update(void)
-{
-    UpdateMusicStream(music);
+    while (!WindowShouldClose())
+    {
+        UpdateMusicStream(music);
 
-    if (emTransicao) {
-        AtualizarTransicao();
-        return;
+        if (emTransicao) {
+            AtualizarTransicao();
+        } else {
+            switch (tela_atual) {
+                case TELA_MENU:        AtualizarMenu();       break;
+                case TELA_INSTRUCOES:  AtualizarInstrucoes(); break;
+                case TELA_GAMEPLAY:    AtualizarGame();       break;
+                case TELA_LIDERES:     AtualizarPlacar();     break;
+                case TELA_GAMEOVER:    AtualizarGameOver();   break;
+                case TELA_NOVORECORDE: /* só desenha */       break;
+            }
+        }
+
+        BeginDrawing();
+        ClearBackground(COR_FUNDO);
+
+        switch (tela_atual) {
+            case TELA_MENU:        DesenharMenu();        break;
+            case TELA_INSTRUCOES:  DesenharInstrucoes();  break;
+            case TELA_GAMEPLAY:    DesenharGameplay();    break;
+            case TELA_LIDERES:     DesenharPlacar();      break;
+            case TELA_GAMEOVER:    DesenharGameOver();    break;
+            case TELA_NOVORECORDE: DesenharNovoRecorde(); break;
+        }
+
+        if (emTransicao) DesenharTransicao();
+
+        EndDrawing();
     }
 
-    switch (tela_atual) {
-        case TELA_MENU:
-            AtualizarMenu();
-            break;
-        case TELA_INSTRUCOES:
-            AtualizarInstrucoes();
-            break;
-        case TELA_GAMEPLAY:
-            AtualizarGame();
-            break;
-        case TELA_LIDERES:
-            AtualizarPlacar();
-            break;
-        case TELA_GAMEOVER:
-            AtualizarGameOver();
-            break;
-        case TELA_NOVORECORDE:
-
-            break;
-        case TELA_NOME_JOGADOR:
-            AtualizarNomeJogador();
-            break;
-    }
-}
-
-void Visual_Draw(void)
-{
-
-    if (tela_atual == TELA_GAMEPLAY) {
-
-        DrawGame();
-        return;
-    }
-
-    BeginDrawing();
-    ClearBackground((Color){10, 18, 40, 255});
-
-    switch (tela_atual) {
-        case TELA_MENU:
-            DesenharMenu();
-            break;
-        case TELA_INSTRUCOES:
-            DesenharInstrucoes();
-            break;
-        case TELA_LIDERES:
-            DesenharPlacar();
-            break;
-        case TELA_GAMEOVER:
-            DesenharGameOver();
-            break;
-        case TELA_NOVORECORDE:
-            DesenharNovoRecorde();
-            break;
-        case TELA_NOME_JOGADOR:
-            DesenharNomeJogador();
-            break;
-        default:
-            break;
-    }
-
-    if (emTransicao) DesenharTransicao();
-
-    EndDrawing();
-}
-
-void Visual_Unload(void)
-{
     UnloadSound(sClick);
     UnloadSound(sAcertou);
     UnloadSound(sErrou);
     UnloadSound(sNovoRecorde);
     UnloadMusicStream(music);
+
     CloseAudioDevice();
+    CloseWindow();
+    return 0;
 }
