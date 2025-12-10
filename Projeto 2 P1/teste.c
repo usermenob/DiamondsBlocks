@@ -27,7 +27,8 @@ static const float BLOCO_SIZE   = 0.7f;
 
 // -------------------------------------------------------------------------------
 typedef enum {
-    TELA_MENU = 0,
+    TELA_NOME_JOGADOR = 0,
+    TELA_MENU,
     TELA_INSTRUCOES,
     TELA_GAMEPLAY,
     TELA_LIDERES,
@@ -44,7 +45,7 @@ typedef struct {
     bool novoRecorde;
 } DadosJogo;
 
-TelasJogo tela_atual = TELA_MENU;
+TelasJogo tela_atual = TELA_NOME_JOGADOR;
 DadosJogo jogo;
 
 RegistroPlacar placar[MAX_JOGADORES];
@@ -65,6 +66,7 @@ float masterVolume = 1.0f;
 float musicVolume  = 0.5f;
 float sfxVolume    = 0.9f;
 
+//duda
 typedef enum{
     SHOW_BOXES,
     WAIT_INPUT,
@@ -150,9 +152,9 @@ void GenerateBoxes(int count)
         boxes[i] = grid[i];
     }
 }
+//duda
 
-
-
+//giovanna
 static void DesenharTabuleiro3D(void)
 {
     const int cols    = BOARD_COLS;
@@ -187,8 +189,9 @@ static void DesenharTabuleiro3D(void)
     }
 }
 
+//giovanna
 
-
+//duda
 void InitGameplay3D(void)
 {
 
@@ -223,7 +226,8 @@ void ResetGame(void)
 
     InitGameplay3D();
 }
-
+//duda
+//giovanna
 
 void IniciarTransicao(TelasJogo tela)
 {
@@ -253,6 +257,7 @@ void DesenharTransicao(void)
                   (Color){0, 0, 0, (unsigned char)(transicaoAlpha * 255)});
 }
 
+//giovanna
 
 void AtualizarNomeJogador(void){
     int key = GetCharPressed();
@@ -279,6 +284,22 @@ void AtualizarNomeJogador(void){
     if (IsKeyPressed(KEY_ESCAPE)) {
         CloseWindow();
     }
+}
+//giovanna
+void DesenharFundoBonito(void)
+{
+
+    Color top    = (Color){  5,  10,  35, 255 };
+    Color bottom = (Color){  3,   4,  18, 255 };
+
+    DrawRectangleGradientV(0, 0, largura_tela, altura_tela, top, bottom);
+
+
+    Color vignette = (Color){ 0, 0, 0, 70 };
+    DrawRectangle(0, 0, largura_tela, 40, vignette);
+    DrawRectangle(0, altura_tela-60, largura_tela, 60, vignette);
+    DrawRectangle(0, 0, 80, altura_tela, vignette);
+    DrawRectangle(largura_tela-80, 0, 80, altura_tela, vignette);
 }
 
 void DesenharNomeJogador(void)
@@ -307,7 +328,8 @@ void DesenharNomeJogador(void)
         DrawText("_", cx + 10 + textoLarg, cy + 12, 24, YELLOW);
     }
 }
-
+//giovanna
+//duda
 void AtualizarGame(void)
 {
     float dt = GetFrameTime();
@@ -368,22 +390,22 @@ void AtualizarGame(void)
 
                 if (jogo.vidas <= 0) {
 
-                      int entrou = atualizar_placar(placar,&qtdPlacar,nomeJogador,jogo.score);
+                      int entrou = atualizar_placar(placar,&qtdPlacar,gNomeJogador,jogo.score);
 
-                if (entrou) {
-                    salvar_placar("placares_diamonds.txt", placar, qtdPlacar);
+                    if (entrou) {
+                        salvar_placar("placares_diamonds.txt", placar, qtdPlacar);
 
-                    if (qtdPlacar > 0) {
-                        jogo.melhorScore = placar[0].pontuacao;
+                        if (qtdPlacar > 0) {
+                            jogo.melhorScore = placar[0].pontuacao;
+                        }
+
+                        jogo.novoRecorde = true;
+                        PlaySound(sNovoRecorde);
+                        IniciarTransicao(TELA_NOVORECORDE);
+                    } else {
+                        jogo.novoRecorde = false;
+                        IniciarTransicao(TELA_GAMEOVER);
                     }
-
-                    jogo.novoRecorde = true;
-                    PlaySound(sNovoRecorde);
-                    IniciarTransicao(TELA_NOVORECORDE);
-                } else {
-                    jogo.novoRecorde = false;
-                    IniciarTransicao(TELA_GAMEOVER);
-                }
                 } else {
 
                     jogo.fase++;
@@ -406,22 +428,6 @@ void AtualizarGame(void)
         PlaySound(sClick);
         IniciarTransicao(TELA_MENU);
     }
-}
-
-void DesenharFundoBonito(void)
-{
-
-    Color top    = (Color){  5,  10,  35, 255 };
-    Color bottom = (Color){  3,   4,  18, 255 };
-
-    DrawRectangleGradientV(0, 0, largura_tela, altura_tela, top, bottom);
-
-
-    Color vignette = (Color){ 0, 0, 0, 70 };
-    DrawRectangle(0, 0, largura_tela, 40, vignette);
-    DrawRectangle(0, altura_tela-60, largura_tela, 60, vignette);
-    DrawRectangle(0, 0, 80, altura_tela, vignette);
-    DrawRectangle(largura_tela-80, 0, 80, altura_tela, vignette);
 }
 
 void DesenharGameplay(void)
@@ -496,6 +502,7 @@ void DesenharGameplay(void)
              centroX - 100,
              altura_tela - 40, 20, (Color){255, 230, 120, 255});
 }
+
 else if (state == SHOW_RESULT) {
 
     int diff = abs(playerAnswer - boxCount);
@@ -528,7 +535,9 @@ else if (state == SHOW_RESULT) {
 }
 
 }
+//giovanna
 
+//duda
 
 void AtualizarMenu(void)
 {
@@ -556,7 +565,9 @@ void AtualizarMenu(void)
         }
     }
 }
+//duda
 
+//giovanna
 void DesenharMenu(void)
 {
     DesenharFundoBonito();
@@ -709,30 +720,89 @@ void DesenharPlacar(void)
 {
     DesenharFundoBonito();
 
-    const char *titulo = "Placar";
-    int size           = 34;
-    int largura        = MeasureText(titulo, size);
-    DrawText(titulo, (largura_tela - largura)/2, 40, size, RAYWHITE);
+    const char *titulo = "PLACAR - TOP 10";
+    int sizeTitulo     = 42;
+    int larguraTitulo  = MeasureText(titulo, sizeTitulo);
+    DrawText(titulo,
+             (largura_tela - larguraTitulo)/2,
+             40,
+             sizeTitulo,
+             GOLD);
+
+    int caixaX = 80;
+    int caixaY = 110;
+    int caixaW = largura_tela - 160;
+    int caixaH = altura_tela - 210;
+
+    DrawRectangleRounded(
+        (Rectangle){ caixaX, caixaY, caixaW, caixaH },
+        0.2f, 12,
+        (Color){0, 0, 0, 110}
+    );
 
     if (qtdPlacar == 0) {
-        DrawText("Nenhuma partida registrada ainda.",150, 150, 22, LIGHTGRAY);
-    }
-    else {
-        DrawText("Pos  Nome                 Pontos", 150, 120, 20, GRAY);
+        DrawText("Nenhuma partida registrada ainda.",
+                 caixaX + 40, caixaY + 40, 24, LIGHTGRAY);
 
-        for (int i = 0; i < qtdPlacar; i++) {
+    } else {
 
-            DrawText(TextFormat("%2d. %-15s %6d",i + 1,placar[i].nome,placar[i].pontuacao),150,150 + i * 26,22,RAYWHITE);
+        int colunaL_X = caixaX + 40;
+        int colunaR_X = caixaX + caixaW/2 + 20;
+        int headerY   = caixaY + 30;
+        int rowStartY = headerY + 35;
+        int rowGap    = 28;
+
+        DrawText("Pos",   colunaL_X,              headerY, 24, YELLOW);
+        DrawText("Nome",  colunaL_X + 60,         headerY, 24, YELLOW);
+        DrawText("Pontos",colunaL_X + 260,        headerY, 24, YELLOW);
+
+        DrawText("Pos",   colunaR_X,              headerY, 24, YELLOW);
+        DrawText("Nome",  colunaR_X + 60,         headerY, 24, YELLOW);
+        DrawText("Pontos",colunaR_X + 260,        headerY, 24, YELLOW);
+
+        for (int i = 0; i < qtdPlacar && i < 10; i++) {
+
+            int col    = (i < 5) ? 0 : 1;
+            int row    = (i < 5) ? i : (i - 5);
+
+            int baseX  = (col == 0) ? colunaL_X : colunaR_X;
+            int y      = rowStartY + row * rowGap;
+
+            Color corLinha = (i == 0 ? GOLD : RAYWHITE);
+            int   fontRow  = (i == 0 ? 26  : 22);
+
+            DrawText(TextFormat("%2d", i+1),
+                     baseX,
+                     y,
+                     fontRow,
+                     corLinha);
+
+            DrawText(placar[i].nome,
+                     baseX + 60,
+                     y,
+                     fontRow,
+                     corLinha);
+
+            DrawText(TextFormat("%5d", placar[i].pontuacao),
+                     baseX + 260,
+                     y,
+                     fontRow,
+                     corLinha);
         }
-
-
-
-        DrawText(TextFormat("Melhor pontuação ate agora: %d pontos",placar[0].pontuacao), 150, 150, 22, GOLD);
     }
 
+    const char *rodape = "ENTER ou ESC para voltar";
+    int tamRodape      = 20;
+    int largRodape     = MeasureText(rodape, tamRodape);
 
-    DrawText("ESC ou ENTER para voltar", 260, altura_tela - 50, 18, GRAY);
+    DrawText(rodape,
+             (largura_tela - largRodape)/2,
+             altura_tela - 40,
+             tamRodape,
+             LIGHTGRAY);
 }
+
+
 
 
 void AtualizarGameOver(void)
@@ -838,6 +908,7 @@ int main(void)
                 case TELA_LIDERES:     AtualizarPlacar();     break;
                 case TELA_GAMEOVER:    AtualizarGameOver();   break;
                 case TELA_NOVORECORDE: /* só desenha */       break;
+                case TELA_NOME_JOGADOR:AtualizarNomeJogador();break;
             }
         }
 
@@ -851,6 +922,7 @@ int main(void)
             case TELA_LIDERES:     DesenharPlacar();      break;
             case TELA_GAMEOVER:    DesenharGameOver();    break;
             case TELA_NOVORECORDE: DesenharNovoRecorde(); break;
+            case TELA_NOME_JOGADOR:DesenharNomeJogador();break;
         }
 
         if (emTransicao) DesenharTransicao();
