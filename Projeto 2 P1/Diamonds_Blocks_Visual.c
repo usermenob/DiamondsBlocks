@@ -1,9 +1,16 @@
 #include "raylib.h"
 #include <math.h>
+#include "placar.h"
 
 
 #define largura_tela 900
 #define altura_tela  500
+#define ARUIVO_PLACAR "placares_diamonds.txt"
+
+RegistroPlacar gPlacar[MAX_JOGADORES];
+int gQuantidadePlacar = 0;
+char gNomeJogador[TAM_NOME] = "Jogador";
+
 
 
 typedef enum {
@@ -124,7 +131,26 @@ void AtualizarTransicao(void)
         }
     }
 }
+void FimPartida(void){
+    int entrou = atualizar_placar(gPlacar, %gQuantidadePlacar, gNomeJogador, jogo.score);
 
+    if(entrou){
+        salvar_placar(ARQUIVO_PLACAR,gPlacar,gQuantidadePlacar);
+
+        if(gQuantidadePlacar>0){
+            jogo.melhorScore = gPlacar[0].pontuacao;
+        }
+        jogo.novoRecorde = True;
+        Playsound(sNovoRecorde);
+        IniciarTransicao(TELA_NOVORECORDE);
+    }
+    else{
+        jogo.novoRecorde = false;
+        IniciarTransicao(TELA_GAMEOVER)
+    
+    }
+    
+}
 void DesenharTransicao(void)
 {
     DrawRectangle(0, 0, largura_tela, altura_tela,
@@ -146,15 +172,7 @@ void AtualizarGame(void)
 
   
     if (IsKeyPressed(KEY_ENTER)) {
-        if (jogo.score > jogo.melhorScore) {
-            jogo.melhorScore = jogo.score;
-            jogo.novoRecorde = true;
-            PlaySound(sNovoRecorde);
-            IniciarTransicao(TELA_NOVORECORDE);
-        } else {
-            jogo.novoRecorde = false;
-            IniciarTransicao(TELA_GAMEOVER);
-        }
+        FimPartida();
     }
 
   
@@ -164,15 +182,7 @@ void AtualizarGame(void)
     }
 
     if (jogo.vidas <= 0) {
-        if (jogo.score > jogo.melhorScore) {
-            jogo.melhorScore = jogo.score;
-            jogo.novoRecorde = true;
-            PlaySound(sNovoRecorde);
-            IniciarTransicao(TELA_NOVORECORDE);
-        } else {
-            jogo.novoRecorde = false;
-            IniciarTransicao(TELA_GAMEOVER);
-        }
+       FimPartida();
     }
 }
 
@@ -458,15 +468,23 @@ void DesenharPlacar(void)
 {
     DesenharFundoBonito();
 
-    const char *titulo = "Placar";
+    const char *titulo = "Placar - Top 10";
     int size           = 34;
     int largura        = MeasureText(titulo, size);
     DrawText(titulo, (largura_tela - largura)/2, 40, size, RAYWHITE);
 
-    DrawText("Melhor pontuação até agora:", 150, 150, 22, LIGHTGRAY);
-    DrawText(TextFormat("%d pontos", jogo.melhorScore), 150, 190, 26, GOLD);
+    if (gQuantidadePlacar == 0){
+        DrawText("Nenhuma Partida Registrada Ainda.",150,150,22,LIGHTGRAY);
+    }
+    else{
+        DrawText("Pos  Nome                 Pontos", 150, 150, 20, GRAY);
 
-    DrawText("No futuro tera o TOP 10 jogadores", 150, 240, 18, GRAY);
+        for (int i = 0; i < gQuantidadePlacar; i++){
+            DrawText(TextFormat("%2d. %-15s %6d",i+1, gPlacar[i].nome, gPlacar[i].pontuacao),150,150 +(i*26), 22, RAYWHITE);
+        }
+
+        DrawText(TextFormat("Melhor pontuação até agora: %d pontos",gPlacar[0].pontuacao), 150, 150, 22, GOLD);
+    }
 
     DrawText("ESC ou ENTER para voltar", 260, altura_tela - 50, 18, GRAY);
 }
@@ -542,10 +560,18 @@ int main(void)
 
     PlayMusicStream(music);
 
+    gQuantidadePlacar = carregar_placar(ARQUIVO_PLACAR, gPlacar, MAX_JOGADORES);
+
+    if (gQuantidadePlacar > 0) {
+        jogo.melhorScore = gPlacar[0].pontuacao;
+    } else {
+        jogo.melhorScore = 0;
+    }
+
     jogo.melhorScore = 0;
     ResetGame();
     SetTargetFPS(60);
-
+    
     while (!WindowShouldClose())
     {
         UpdateMusicStream(music);
@@ -590,3 +616,4 @@ int main(void)
     CloseWindow();
     return 0;
 }
+
