@@ -504,7 +504,7 @@ void Visual_Update(void)
             AtualizarGameOver();
             break;
         case TELA_NOVORECORDE:
-            // só desenha
+            AtualizarGameOver();
             break;
     }
 }
